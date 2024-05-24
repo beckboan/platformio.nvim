@@ -16,6 +16,16 @@ function M.PIOBoardList(args)
 	return table.concat(boards, "\n")
 end
 
+function M.PIOInit(board)
+	-- Send commands to the terminal job
+	local cmd = "platformio project init --ide vim"
+	if board and board ~= "" then
+		cmd = cmd .. " --board " .. board
+	end
+
+	utils.OpenTerm(cmd)
+end
+
 function M.PIOBoardSelection(args)
 	args = args or ""
 	local bufnr = vim.fn.bufnr("PIO Boards")
@@ -51,7 +61,7 @@ function M.PIOBoardSelection(args)
 			bufnr,
 			"n",
 			"<CR>",
-			[[:lua require("platformio.utils").PIOInit(vim.fn.expand("<cWORD>"))<CR>]],
+			[[:lua require("platformio.boards").PIOInit(vim.fn.expand("<cWORD>"))<CR>]],
 			{ noremap = true, silent = true }
 		)
 	end
@@ -59,8 +69,8 @@ function M.PIOBoardSelection(args)
 	local output = vim.fn.systemlist("platformio boards " .. args)
 	vim.api.nvim_buf_set_lines(bufnr, 0, -1, false, output)
 	vim.api.nvim_command("normal! G")
-	vim.api.nvim_set_option_value("readonly", false, buf: bufnr)
-	vim.api.nvim_set_option_value("modifiable", true, buf: bufnr)
+	vim.api.nvim_set_option_value("readonly", false, { buf = bufnr })
+	vim.api.nvim_set_option_value("modifiable", true, { buf = bufnr })
 
 	-- Set the cursor to the first visible line
 	vim.api.nvim_win_set_cursor(winid, { 1, 0 })
