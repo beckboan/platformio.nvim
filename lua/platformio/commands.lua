@@ -144,22 +144,19 @@ M.parse_command = function(output)
 	elseif type(output) == "table" then
 		output_string = table.concat(output, "\n")
 	else
-		--TODO: Need to log here
+		-- TODO: Need to log here
 	end
 
-	-- for line in output:gmatch("([^\r\n]*[\r\n]?)") do
 	for line in output_string:gmatch("([^\r\n]*[\r\n]?)") do
+		-- print(line)
 		if line == "\n" or line == "\r\n" then
-			-- If an empty line is encountered, increment the empty line count
 			empty_line_count = empty_line_count + 1
 		else
 			if empty_line_count > 0 then
-				-- If there were empty lines before this line, add the current group to the data table
 				table.insert(data, current_group)
 				current_group = {} -- Reset the current group for the next set of lines
 				empty_line_count = 0 -- Reset the empty line count
 			end
-			-- Add the line to the current group
 			table.insert(current_group, line)
 		end
 	end
@@ -172,22 +169,19 @@ M.parse_command = function(output)
 	return data
 end
 
-M.run_pio_command = function(command)
+M.run_pio_command_async = function(command, callback)
 	local full_command = "pio " .. command
 
-	local file = io.popen(full_command)
+	vim.fn.jobstart(full_command, {
+		on_stdout = function(_, data, _)
+			if data then
+				local output = table.concat(data, "\n")
 
-	if not file then
-		return nil
-	end
-	local output = file:read("*a")
-	if not output then
-		return nil
-	end
-	file:close()
-	local lines = M.parse_command(output)
-
-	return lines
+				local lines = M.parse_command(output)
+				callback(lines)
+			end
+		end,
+		stdout_buffered = true,
+	})
 end
-
 return M
