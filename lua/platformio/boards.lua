@@ -26,7 +26,7 @@ function M.PIOInit(board)
 	utils.OpenTerm(cmd)
 end
 
-function M.PIOBoardSelection(args)
+function M.PIOSelectBoard(args)
 	args = args or ""
 	local bufnr = vim.fn.bufnr("PIO Boards")
 	local winid = vim.fn.bufwinid(bufnr)
