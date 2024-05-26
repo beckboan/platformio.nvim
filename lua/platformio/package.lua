@@ -211,15 +211,17 @@ function M.PIOSelectPkg(name, packtype, args)
 		}
 		local win = vim.api.nvim_open_win(bufnr, true, opts)
 		winid = vim.api.nvim_get_current_win()
+		vim.api.nvim_set_option_value("winhl", "Normal:MyHighlight", { win = win })
 		if winid < 0 then
 			print("Failed to create window")
 			return
 		end
 		vim.api.nvim_win_set_buf(win, bufnr)
+		vim.api.nvim_set_option_value("bufhidden", "wipe", { buf = bufnr })
 		vim.bo.buftype = "nofile"
-		vim.bo.bufhidden = "wipe"
-		vim.bo.filetype = "piolibs"
+		vim.bo.buflisted = true
 		vim.api.nvim_buf_set_name(bufnr, "PIO Pkg Install")
+
 		vim.api.nvim_buf_set_keymap(
 			bufnr,
 			"n",
@@ -252,9 +254,6 @@ function M.PIOSelectPkg(name, packtype, args)
 		vim.api.nvim_buf_set_lines(bufnr, 5, -1, false, output)
 		vim.api.nvim_set_option_value("readonly", true, { buf = bufnr })
 		vim.api.nvim_set_option_value("modifiable", false, { buf = bufnr })
-
-		vim.api.nvim_buf_add_highlight(bufnr, -1, "MyHighlightGroup", 0, 5, 9) -- Example: Colors "Help:" in red
-		vim.api.nvim_buf_add_highlight(bufnr, -1, "MyHighlightGroup", 2, 0, 5) -- Example: Colors "Found" in red
 
 		vim.api.nvim_win_set_cursor(winid, { 1, 0 })
 	end)

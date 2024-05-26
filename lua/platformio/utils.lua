@@ -4,9 +4,21 @@ function M.OpenTerm(cmd, opts)
 	opts = opts or ""
 	-- Create a new terminal buffer
 	local term_bufnr = vim.api.nvim_create_buf(false, true)
+	local width = vim.o.columns -- Set window width to full screen width
+	local height = math.floor(vim.o.lines * 0.5) -- Calculate 50% of the screen height
 
-	-- Set the newly created buffer as the current buffer
+	local win_opts = {
+		relative = "editor",
+		width = width,
+		height = height,
+		row = vim.o.lines - height + 1,
+		col = 1,
+	}
+	local win = vim.api.nvim_open_win(term_bufnr, true, win_opts)
+	vim.api.nvim_set_option_value("winhl", "Normal:MyHighlight", { win = win })
+
 	vim.api.nvim_set_current_buf(term_bufnr)
+	vim.bo.buflisted = true
 
 	-- Open a new terminal window
 	vim.api.nvim_command("terminal")
