@@ -28,43 +28,28 @@ end
 
 function M.PIOSelectBoard(args)
 	args = args or ""
-	local bufnr = vim.fn.bufnr("PIO Boards")
-	local winid = vim.fn.bufwinid(bufnr)
-	local height = math.floor(vim.o.lines * 0.5) -- Calculate 50% of the screen height
 
-	if winid ~= -1 then
-		vim.api.nvim_set_current_win(winid)
-		vim.api.nvim_win_set_height(0, height) -- Set window height
-	else
-		bufnr = vim.api.nvim_create_buf(false, true)
-		local width = vim.o.columns -- Set window width to full screen width
+	local winid, bufnr = utils.RunPIOWin("PIO Boards")
 
-		local opts = {
-			relative = "editor",
-			width = width,
-			height = height,
-			row = vim.o.lines - height + 1,
-			col = 1,
-		}
-		local win = vim.api.nvim_open_win(bufnr, true, opts)
-		winid = vim.api.nvim_get_current_win()
-		if winid < 0 then
-			print("Failed to create window")
-			return
-		end
-		vim.api.nvim_win_set_buf(win, bufnr)
-		vim.bo.buftype = "nofile"
-		vim.bo.bufhidden = "wipe"
-		vim.bo.filetype = "pioboards"
-		vim.api.nvim_buf_set_name(bufnr, "PIO Boards")
-		vim.api.nvim_buf_set_keymap(
-			bufnr,
-			"n",
-			"<CR>",
-			[[:lua require("platformio.boards").PIOInit(vim.fn.expand("<cWORD>"))<CR>]],
-			{ noremap = true, silent = true }
-		)
+	vim.api.nvim_set_option_value("winhl", "Normal:MyHighlight", { win = winid })
+	if winid < 0 then
+		print("Failed to create window")
+		return
 	end
+
+	vim.api.nvim_set_option_value("bufhidden", "wipe", { buf = bufnr })
+
+	vim.bo.buftype = "nofile"
+	vim.bo.bufhidden = "wipe"
+	vim.bo.filetype = "pioboards"
+	vim.api.nvim_buf_set_keymap(
+		bufnr,
+		"n",
+		"<CR>",
+		[[:lua require("platformio.boards").PIOInit(vim.fn.expand("<cWORD>"))<CR>]],
+		{ noremap = true, silent = true }
+	)
+
 	print("Scanning PlatformIO boards..")
 	local output = vim.fn.systemlist("platformio boards " .. args)
 	vim.api.nvim_buf_set_lines(bufnr, 0, -1, false, output)

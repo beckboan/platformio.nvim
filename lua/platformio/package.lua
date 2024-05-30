@@ -51,16 +51,13 @@ end
 function M.PIOInstallPkg(name, packtype)
 	local prefix = ""
 	if packtype == "library" then
-		prettytype = "Libraries"
-		prefix = "-l"
+		prefix = " -l"
 	elseif packtype == "tool" then
-		prettytype = "Tools"
-		prefix = "-t"
+		prefix = " -t"
 	elseif packtype == "platform" then
-		prettytype = "Platforms"
-		prefix = "-p"
+		prefix = " -p"
 	else
-		prettytype = "Packages"
+		prefix = ""
 	end
 	local name = name
 	if name == "" then
@@ -72,7 +69,7 @@ function M.PIOInstallPkg(name, packtype)
 		name = name:sub(5)
 	end
 
-	local cmd = "pio pkg install " .. prefix .. " " .. name
+	local cmd = "pio pkg install" .. prefix .. " '" .. name .. "'"
 
 	utils.OpenTerm(cmd)
 end
@@ -170,11 +167,11 @@ function M.PIOSelectPkg(name, packtype, args)
 		print("Must enter a name")
 		return
 	end
+
 	args = args or ""
 	packtype = packtype or ""
-	local bufnr = vim.fn.bufnr("PIO Pkg Install")
-	local winid = vim.fn.bufwinid(bufnr)
-	local height = math.floor(vim.o.lines * 0.5) -- Calculate 50% of the screen height
+
+	local winid, bufnr = utils.RunPIOWin("PIO Pkg Install")
 
 	local params = {
 		name = name,
@@ -183,6 +180,22 @@ function M.PIOSelectPkg(name, packtype, args)
 		details = true,
 		page = 1,
 	}
+
+	vim.api.nvim_set_option_value("winhl", "Normal:MyHighlight", { win = winid })
+	if winid < 0 then
+		print("Failed to create window")
+		return
+	end
+
+	vim.api.nvim_set_option_value("bufhidden", "wipe", { buf = bufnr })
+
+	vim.api.nvim_buf_set_keymap(
+		bufnr,
+		"n",
+		"<CR>",
+		[[:lua require("platformio.package").PIOInstallPkg(vim.fn.getline("."), ']] .. packtype .. [[')<CR>]],
+		{ noremap = true, silent = true }
+	)
 
 	local prettytype = ""
 	if packtype == "library" then
@@ -195,41 +208,6 @@ function M.PIOSelectPkg(name, packtype, args)
 		prettytype = "Packages"
 	end
 
-	if winid ~= -1 then
-		vim.api.nvim_set_current_win(winid)
-		vim.api.nvim_win_set_height(0, height) -- Set window height
-	else
-		bufnr = vim.api.nvim_create_buf(false, true)
-		local width = vim.o.columns -- Set window width to full screen width
-
-		local opts = {
-			relative = "editor",
-			width = width,
-			height = height,
-			row = vim.o.lines - height + 1,
-			col = 1,
-		}
-		local win = vim.api.nvim_open_win(bufnr, true, opts)
-		winid = vim.api.nvim_get_current_win()
-		vim.api.nvim_set_option_value("winhl", "Normal:MyHighlight", { win = win })
-		if winid < 0 then
-			print("Failed to create window")
-			return
-		end
-		vim.api.nvim_win_set_buf(win, bufnr)
-		vim.api.nvim_set_option_value("bufhidden", "wipe", { buf = bufnr })
-		vim.bo.buftype = "nofile"
-		vim.bo.buflisted = true
-		vim.api.nvim_buf_set_name(bufnr, "PIO Pkg Install")
-
-		vim.api.nvim_buf_set_keymap(
-			bufnr,
-			"n",
-			"<CR>",
-			[[:lua require("platformio.package").PIOInstallPkg(vim.fn.getline("."),packtype)<CR>]],
-			{ noremap = true, silent = true }
-		)
-	end
 	print("Searching " .. prettytype .. " ...")
 
 	async_pio_pkg_search(params, function(packages, total_packages)
