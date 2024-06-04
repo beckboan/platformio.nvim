@@ -1,3 +1,5 @@
+local utils = require("platformio.utils")
+
 local M = {}
 
 vim.api.nvim_set_keymap(

@@ -134,7 +134,10 @@ local function async_pio_pkg_search(params, callback)
 		search_pkg_async(params, function(packages, total_packs, pages)
 			total_packages = total_packs
 			total_pages = pages
-			-- print(total_pages)
+			if total_pages == nil then
+				callback(all_packages, 0, 0)
+				return
+			end
 
 			for _, pack in ipairs(packages) do
 				table.insert(all_packages, pack)
@@ -208,7 +211,7 @@ function M.PIOSelectPkg(name, packtype, args)
 		prettytype = "Packages"
 	end
 
-	print("Searching " .. prettytype .. " ...")
+	vim.api.nvim_echo({ { "Searching " .. prettytype .. " ...", "Normal" } }, false, {})
 
 	async_pio_pkg_search(params, function(packages, total_packages)
 		local output = {}
@@ -220,8 +223,8 @@ function M.PIOSelectPkg(name, packtype, args)
 				table.insert(output, processed_package)
 			end
 		end
+
 		vim.api.nvim_set_option_value("modifiable", true, { buf = bufnr })
-		vim.api.nvim_set_option_value("readonly", false, { buf = bufnr })
 
 		vim.api.nvim_buf_set_lines(bufnr, 0, -1, false, {
 			"Help: Press [Enter] on a " .. packtype .. " name or ID to install",
@@ -230,7 +233,8 @@ function M.PIOSelectPkg(name, packtype, args)
 			"",
 		})
 		vim.api.nvim_buf_set_lines(bufnr, 5, -1, false, output)
-		vim.api.nvim_set_option_value("readonly", true, { buf = bufnr })
+
+		-- vim.api.nvim_set_option_value("readonly", true, { buf = bufnr })
 		vim.api.nvim_set_option_value("modifiable", false, { buf = bufnr })
 
 		vim.api.nvim_win_set_cursor(winid, { 1, 0 })

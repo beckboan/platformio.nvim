@@ -50,17 +50,39 @@ function M.PIOSelectBoard(args)
 		{ noremap = true, silent = true }
 	)
 
-	print("Scanning PlatformIO boards..")
-	local output = vim.fn.systemlist("platformio boards " .. args)
-	vim.api.nvim_buf_set_lines(bufnr, 0, -1, false, output)
-	vim.api.nvim_command("normal! G")
-	vim.api.nvim_set_option_value("readonly", false, { buf = bufnr })
-	vim.api.nvim_set_option_value("modifiable", true, { buf = bufnr })
+	vim.api.nvim_echo({ { "Scanning Boards ...", "Normal" } }, false, {})
 
-	-- Set the cursor to the first visible line
+	local output = vim.fn.systemlist("platformio boards " .. args)
+	vim.api.nvim_set_option_value("modifiable", true, { buf = bufnr })
+	vim.api.nvim_buf_set_lines(bufnr, 0, -1, false, output)
+	vim.api.nvim_set_option_value("modifiable", false, { buf = bufnr })
+
+	local hl_groups = {
+		PIOPlatform = { fg = "Cyan", bold = true }, -- Blue
+		PIOTableHeader = { fg = "Purple", bold = true }, -- Purple
+		PIOSeparator = { fg = "Grey" }, -- Grey
+		PIOBoardID = { fg = "Orange" }, -- Red
+		-- Add more highlight groups as needed...
+	}
+
+	utils.create_highlight_groups(hl_groups)
+
+	-- Apply highlights to buffer content
+	for i, line in ipairs(output) do
+		if line:match("^Platform:") then
+			utils.highlight_line(bufnr, i - 1, line, "^Platform:", "PIOPlatform")
+		elseif line:match("^ID%s+MCU%s+Frequency%s+Flash%s+RAM%s+Name") then
+			utils.highlight_line(bufnr, i - 1, line, "^ID%s+MCU%s+Frequency%s+Flash%s+RAM%s+Name$", "PIOTableHeader")
+		elseif line:match("^=+$") then
+			utils.highlight_line(bufnr, i - 1, line, "^=+$", "PIOSeparator")
+		elseif line:match("^[%s%-]+$") then
+			utils.highlight_line(bufnr, i - 1, line, "^[%s%-]+$", "PIOSeparator")
+		elseif line:match("^%S") then
+			utils.highlight_line(bufnr, i - 1, line, "^%S+", "PIOBoardID")
+			-- utils.highlight_line(bufnr, i - 1, line, "%S+$", "PIOBoardName")
+		end
+	end
 	vim.api.nvim_win_set_cursor(winid, { 1, 0 })
 end
-
--- M.PIOBoardSelection()
 
 return M
