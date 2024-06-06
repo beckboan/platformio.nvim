@@ -18,12 +18,13 @@ end
 
 function M.PIOInit(board)
 	-- Send commands to the terminal job
-	local cmd = "platformio project init --ide vim"
+	local cmd = { "platformio", "project", "init", "--ide", "vim" }
 	if board and board ~= "" then
-		cmd = cmd .. " --board " .. board
+		table.insert(cmd, "--board")
+		table.insert(cmd, board)
 	end
 
-	utils.OpenTerm(cmd)
+	utils.OpenTerm2(cmd)
 end
 
 function M.PIOSelectBoard(args)
@@ -56,16 +57,6 @@ function M.PIOSelectBoard(args)
 	vim.api.nvim_set_option_value("modifiable", true, { buf = bufnr })
 	vim.api.nvim_buf_set_lines(bufnr, 0, -1, false, output)
 	vim.api.nvim_set_option_value("modifiable", false, { buf = bufnr })
-
-	local hl_groups = {
-		PIOPlatform = { fg = "Cyan", bold = true }, -- Blue
-		PIOTableHeader = { fg = "Purple", bold = true }, -- Purple
-		PIOSeparator = { fg = "Grey" }, -- Grey
-		PIOBoardID = { fg = "Orange" }, -- Red
-		-- Add more highlight groups as needed...
-	}
-
-	utils.create_highlight_groups(hl_groups)
 
 	-- Apply highlights to buffer content
 	for i, line in ipairs(output) do

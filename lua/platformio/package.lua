@@ -48,18 +48,19 @@ local search_pkg = function(opts)
 	return packages, total_packages, total_pages
 end
 
-function M.PIOInstallPkg(name, packtype)
+function M.PIOInstallPkg(packname, packtype)
 	local prefix = ""
 	if packtype == "library" then
-		prefix = " -l"
+		prefix = "-l"
 	elseif packtype == "tool" then
-		prefix = " -t"
+		prefix = "-t"
 	elseif packtype == "platform" then
-		prefix = " -p"
+		prefix = "-p"
 	else
 		prefix = ""
 	end
-	local name = name
+	local name = packname
+	print(name)
 	if name == "" then
 		print("Empty package is not accepted")
 		return
@@ -69,9 +70,9 @@ function M.PIOInstallPkg(name, packtype)
 		name = name:sub(5)
 	end
 
-	local cmd = "pio pkg install" .. prefix .. " '" .. name .. "'"
+	local cmd = { "pio", "pkg", "install", prefix, name }
 
-	utils.OpenTerm(cmd)
+	utils.OpenTerm2(cmd)
 end
 
 local search_pkg_async = function(opts, callback)
@@ -224,6 +225,8 @@ function M.PIOSelectPkg(name, packtype, args)
 			end
 		end
 
+		output = utils.remove_consecutive_empty_lines(output)
+
 		vim.api.nvim_set_option_value("modifiable", true, { buf = bufnr })
 
 		vim.api.nvim_buf_set_lines(bufnr, 0, -1, false, {
@@ -237,7 +240,27 @@ function M.PIOSelectPkg(name, packtype, args)
 		-- vim.api.nvim_set_option_value("readonly", true, { buf = bufnr })
 		vim.api.nvim_set_option_value("modifiable", false, { buf = bufnr })
 
-		vim.api.nvim_win_set_cursor(winid, { 1, 0 })
+		vim.defer_fn(function()
+			local previous_line_empty = true
+			-- Apply highlights to buffer content
+			for i, line in ipairs(output) do
+				-- print("Processing line:", line) -- Debugging print
+				--
+				-- utils.highlight_line(bufnr, i - 1, line, "^.*$", "PIOLibraryName")
+
+				if previous_line_empty and line ~= "" then
+					print("Highlighting as LibraryName:", line) -- Debugging print
+					utils.highlight_line(bufnr, i - 1, line, "^.*$", "PIOLibraryName")
+					previous_line_empty = false
+				elseif line == "" then
+					previous_line_empty = true
+				else
+					previous_line_empty = false
+				end
+			end
+
+			vim.api.nvim_win_set_cursor(winid, { 1, 0 })
+		end, 0)
 	end)
 end
 

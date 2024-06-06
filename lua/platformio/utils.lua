@@ -3,8 +3,9 @@ local Terminal = require("toggleterm.terminal").Terminal
 local M = {}
 
 -- local buffer_stack = {} -- Track buffer numbers for opened PIO Term buffers
-M.PIO_WIN_ID = nil -- Track the PIO Term window ID
-M.PIO_TERM = nil
+local PIO_WIN_ID = nil -- Track the PIO Term window ID
+local PIO_TERM = nil
+local JOB_ID = nil
 
 local term = Terminal:new({
 	direction = "horizontal",
@@ -50,11 +51,51 @@ local function print_buffers()
 	end
 end
 
-function M.OpenTerm(input_cmd, opts)
-	if not term:is_open() then
-		term:open()
+-- function M.OpenTerm(input_cmd, opts)
+-- 	if not term:is_open() then
+-- 		term:open()
+-- 	end
+-- 	term:send(input_cmd, false)
+-- end
+
+function M.OpenTerm2(input_cmd, opts)
+	-- Callback function to handle output from the process
+
+	local function on_output2(_, data)
+		if data then
+			for _, d in ipairs(data) do
+				vim.api.nvim_chan_send(JOB_ID, d .. "\r\n")
+			end
+		end
 	end
-	term:send(input_cmd, false)
+
+	-- Check if the terminal window exists and is valid
+	if PIO_TERM == nil or not vim.api.nvim_win_is_valid(PIO_TERM) then
+		-- Create a new buffer and window for the terminal
+		local bufnr = vim.api.nvim_create_buf(false, true)
+		local win_opts = {
+			focusable = true,
+			style = "minimal",
+			split = "below",
+		}
+		PIO_TERM = vim.api.nvim_open_win(bufnr, true, win_opts)
+		JOB_ID = vim.api.nvim_open_term(bufnr, {})
+
+		-- Run the command using vim.system asynchronously
+	else
+		-- If the terminal window is already open, just send the command to it
+		vim.api.nvim_set_current_win(PIO_TERM)
+	end
+
+	vim.api.nvim_chan_send(JOB_ID, table.concat(input_cmd, " ") .. "\n")
+
+	vim.fn.jobstart(input_cmd, {
+		on_stdout = on_output2,
+		on_stderr = on_output2,
+		stdout_buffered = true,
+		stderr_buffered = true,
+		pty = true,
+	})
 end
 
 function M.RunPIOWin(bufname)
@@ -100,10 +141,14 @@ function M.RunPIOWin(bufname)
 end
 
 function M.highlight_line(bufnr, line_nr, line, pattern, hl_group)
+	-- print("Applying highlight to line:", line) -- Debug print
 	local start_col, end_col = string.find(line, pattern)
-	if start_col then
+	if start_col and end_col then
+		print("Highlighted word:", string.sub(line, start_col, end_col)) -- Debug print
 		local ns_id = vim.api.nvim_create_namespace("pio_highlight")
 		vim.api.nvim_buf_add_highlight(bufnr, ns_id, hl_group, line_nr, start_col - 1, end_col)
+	else
+		-- print("Pattern not found in line:", line) -- Debug print
 	end
 end
 
@@ -111,11 +156,8 @@ function M.create_highlight_groups(groups)
 	for group_name, attributes in pairs(groups) do
 		local hl_attrs = {}
 
-		-- Iterate over the attributes and set them in the hl_attrs table
 		for attr_name, attr_value in pairs(attributes) do
-			-- Skip attributes with nil values
 			if attr_value ~= nil then
-				-- Convert boolean values to numbers
 				if type(attr_value) == "boolean" then
 					attr_value = attr_value and 1 or 0
 				end
@@ -123,10 +165,39 @@ function M.create_highlight_groups(groups)
 			end
 		end
 
-		-- Set the highlight group using vim.api.nvim_set_hl
 		vim.api.nvim_set_hl(0, group_name, hl_attrs)
 	end
 end
+
+function M.remove_consecutive_empty_lines(input)
+	local cleaned_output = {}
+	local previous_line_empty = false
+
+	for _, line in ipairs(input) do
+		if line == "" then
+			if not previous_line_empty then
+				table.insert(cleaned_output, line)
+				previous_line_empty = true
+			end
+		else
+			table.insert(cleaned_output, line)
+			previous_line_empty = false
+		end
+	end
+
+	return cleaned_output
+end
+
+local hl_groups = {
+	PIOLibraryName = { fg = "Cyan", bold = true }, -- Blue
+	PIOLibraryInfo = { fg = "Purple", bold = true }, -- Purple
+	PIOPlatform = { fg = "Cyan", bold = true }, -- Blue
+	PIOTableHeader = { fg = "Purple", bold = true }, -- Purple
+	PIOSeparator = { fg = "Grey" }, -- Grey
+	PIOBoardID = { fg = "Orange" }, -- Red
+}
+
+M.create_highlight_groups(hl_groups)
 
 -- function M.HandleBufferClose()
 -- 	local bufnr = vim.api.nvim_get_current_buf()
@@ -157,5 +228,6 @@ end
 -- 		end
 -- 	end
 -- end
+--
 
 return M
