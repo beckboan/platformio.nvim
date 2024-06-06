@@ -237,30 +237,27 @@ function M.PIOSelectPkg(name, packtype, args)
 		})
 		vim.api.nvim_buf_set_lines(bufnr, 5, -1, false, output)
 
-		-- vim.api.nvim_set_option_value("readonly", true, { buf = bufnr })
-		vim.api.nvim_set_option_value("modifiable", false, { buf = bufnr })
+		print(vim.api.nvim_buf_line_count(bufnr))
 
-		vim.defer_fn(function()
-			local previous_line_empty = true
-			-- Apply highlights to buffer content
-			for i, line in ipairs(output) do
-				-- print("Processing line:", line) -- Debugging print
-				--
-				-- utils.highlight_line(bufnr, i - 1, line, "^.*$", "PIOLibraryName")
+		local previous_line_empty = true
 
-				if previous_line_empty and line ~= "" then
-					print("Highlighting as LibraryName:", line) -- Debugging print
-					utils.highlight_line(bufnr, i - 1, line, "^.*$", "PIOLibraryName")
-					previous_line_empty = false
-				elseif line == "" then
-					previous_line_empty = true
-				else
-					previous_line_empty = false
-				end
+		local lines = vim.api.nvim_buf_get_lines(bufnr, 0, -1, false)
+
+		for i, line in ipairs(lines) do
+			print(line)
+			if previous_line_empty and line ~= "" then
+				print("Highlighting as LibraryName:", line) -- Debugging print
+				utils.highlight_line(bufnr, i - 1, line, "^.+$", "PIOLibraryName")
+				previous_line_empty = false
+			elseif line == "" then
+				previous_line_empty = true
+			else
+				previous_line_empty = false
 			end
+		end
 
-			vim.api.nvim_win_set_cursor(winid, { 1, 0 })
-		end, 0)
+		vim.api.nvim_set_option_value("modifiable", false, { buf = bufnr })
+		vim.api.nvim_win_set_cursor(winid, { 1, 0 })
 	end)
 end
 

@@ -145,6 +145,7 @@ function M.highlight_line(bufnr, line_nr, line, pattern, hl_group)
 	local start_col, end_col = string.find(line, pattern)
 	if start_col and end_col then
 		print("Highlighted word:", string.sub(line, start_col, end_col)) -- Debug print
+		print(end_col)
 		local ns_id = vim.api.nvim_create_namespace("pio_highlight")
 		vim.api.nvim_buf_add_highlight(bufnr, ns_id, hl_group, line_nr, start_col - 1, end_col)
 	else
