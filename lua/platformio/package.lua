@@ -60,7 +60,7 @@ function M.PIOInstallPkg(packname, packtype)
 		prefix = ""
 	end
 	local name = packname
-	print(name)
+
 	if name == "" then
 		print("Empty package is not accepted")
 		return
@@ -230,23 +230,22 @@ function M.PIOSelectPkg(name, packtype, args)
 		vim.api.nvim_set_option_value("modifiable", true, { buf = bufnr })
 
 		vim.api.nvim_buf_set_lines(bufnr, 0, -1, false, {
-			"Help: Press [Enter] on a " .. packtype .. " name or ID to install",
+			"Help: Press [Enter] on a " .. packtype .. " name to install",
 			"",
 			"Found " .. total_packages .. " packages.",
 			"",
 		})
 		vim.api.nvim_buf_set_lines(bufnr, 5, -1, false, output)
 
-		print(vim.api.nvim_buf_line_count(bufnr))
+		local lines = vim.api.nvim_buf_get_lines(bufnr, 0, -1, false)
+
+		utils.highlight_instructions(bufnr, lines, 4)
 
 		local previous_line_empty = true
 
-		local lines = vim.api.nvim_buf_get_lines(bufnr, 0, -1, false)
-
-		for i, line in ipairs(lines) do
-			print(line)
+		for i = 5, #lines do
+			local line = lines[i]
 			if previous_line_empty and line ~= "" then
-				print("Highlighting as LibraryName:", line) -- Debugging print
 				utils.highlight_line(bufnr, i - 1, line, "^.+$", "PIOLibraryName")
 				previous_line_empty = false
 			elseif line == "" then

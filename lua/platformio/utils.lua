@@ -1,33 +1,9 @@
-local Terminal = require("toggleterm.terminal").Terminal
-
 local M = {}
 
 -- local buffer_stack = {} -- Track buffer numbers for opened PIO Term buffers
 local PIO_WIN_ID = nil -- Track the PIO Term window ID
 local PIO_TERM = nil
 local JOB_ID = nil
-
-local term = Terminal:new({
-	direction = "horizontal",
-	float_opts = {
-		border = "double",
-	},
-	on_open = function(term)
-		vim.cmd("startinsert!")
-		vim.api.nvim_buf_set_keymap(term.bufnr, "n", "q", "<cmd>close<CR>", { noremap = true, silent = true })
-	end,
-	on_close = function(term)
-		vim.cmd("startinsert!")
-	end,
-})
-
-vim.keymap.set("t", "<esc>", [[<C-\><C-n>]])
-vim.keymap.set("t", "jk", [[<C-\><C-n>]])
-vim.keymap.set("t", "<C-h>", [[<Cmd>wincmd h<CR>]])
-vim.keymap.set("t", "<C-j>", [[<Cmd>wincmd j<CR>]])
-vim.keymap.set("t", "<C-k>", [[<Cmd>wincmd k<CR>]])
-vim.keymap.set("t", "<C-l>", [[<Cmd>wincmd l<CR>]])
-vim.keymap.set("t", "<C-w>", [[<C-\><C-n><C-w>]])
 
 local function find_existing_buf(name)
 	local name_only = name:gsub(".*/", "") -- Extract filename from full path
@@ -107,15 +83,6 @@ function M.RunPIOWin(bufname)
 		vim.api.nvim_buf_set_option(bufnr, "buflisted", true)
 	end
 
-	-- if not vim.tbl_contains(buffer_stack, bufnr) then
-	-- 	table.insert(buffer_stack, bufnr)
-	-- end
-	--
-	-- local previous_bufnr = buffer_stack[#buffer_stack - 1]
-	-- if previous_bufnr and vim.api.nvim_buf_is_valid(previous_bufnr) then
-	-- 	vim.api.nvim_buf_set_option(previous_bufnr, "buflisted", true)
-	-- end
-
 	if not PIO_WIN_ID or not vim.api.nvim_win_is_valid(PIO_WIN_ID) then
 		local win_opts = {
 			focusable = true,
@@ -129,27 +96,15 @@ function M.RunPIOWin(bufname)
 
 	vim.api.nvim_win_set_buf(PIO_WIN_ID, bufnr)
 
-	-- vim.api.nvim_buf_set_keymap(
-	-- 	bufnr,
-	-- 	"n",
-	-- 	"q",
-	-- 	':lua require("platformio.utils").HandleBufferClose()<CR>',
-	-- 	{ noremap = true, silent = true }
-	-- )
-
 	return PIO_WIN_ID, bufnr
 end
 
 function M.highlight_line(bufnr, line_nr, line, pattern, hl_group)
-	-- print("Applying highlight to line:", line) -- Debug print
 	local start_col, end_col = string.find(line, pattern)
 	if start_col and end_col then
-		print("Highlighted word:", string.sub(line, start_col, end_col)) -- Debug print
-		print(end_col)
 		local ns_id = vim.api.nvim_create_namespace("pio_highlight")
 		vim.api.nvim_buf_add_highlight(bufnr, ns_id, hl_group, line_nr, start_col - 1, end_col)
 	else
-		-- print("Pattern not found in line:", line) -- Debug print
 	end
 end
 
@@ -195,40 +150,26 @@ local hl_groups = {
 	PIOPlatform = { fg = "Cyan", bold = true }, -- Blue
 	PIOTableHeader = { fg = "Purple", bold = true }, -- Purple
 	PIOSeparator = { fg = "Grey" }, -- Grey
-	PIOBoardID = { fg = "Orange" }, -- Red
+	PIOBoardID = { fg = "Orange", bold = true }, -- Red
+	PIOMad = { fg = "Orange", bold = true },
+	PIOHappy = { fg = "Green", bold = true },
 }
 
-M.create_highlight_groups(hl_groups)
+function M.highlight_instructions(bufnr, lines, end_nr)
+	for i = 1, end_nr do
+		local line = lines[i]
+		if line:match("^Help:") then
+			M.highlight_line(bufnr, i - 1, line, "^Help:", "PIOMad")
+		end
+		if line:match("%[Enter%]") then
+			M.highlight_line(bufnr, i - 1, line, "%[Enter%]", "PIOHappy")
+		end
+		if line:match("Found %d+") then
+			M.highlight_line(bufnr, i - 1, line, "%d+", "PIOHappy")
+		end
+	end
+end
 
--- function M.HandleBufferClose()
--- 	local bufnr = vim.api.nvim_get_current_buf()
--- 	print(bufnr)
---
--- 	for i, buf in ipairs(buffer_stack) do
--- 		if buf == bufnr then
--- 			table.remove(buffer_stack, i)
--- 			vim.api.nvim_buf_delete(bufnr, { force = true })
--- 			break
--- 		end
--- 	end
---
--- 	local previous_bufnr = buffer_stack[#buffer_stack]
---
--- 	print(vim.api.nvim_buf_is_valid(previous_bufnr))
--- 	local bufname = vim.api.nvim_buf_get_name(previous_bufnr)
--- 	print(bufname)
---
--- 	if previous_bufnr and vim.api.nvim_buf_is_valid(previous_bufnr) then
--- 		vim.api.nvim_win_set_buf(PIO_WIN_ID, previous_bufnr)
--- 	else
--- 		if #vim.api.nvim_list_wins() > 1 then
--- 			vim.cmd("close")
--- 			PIO_WIN_ID = nil
--- 		else
--- 			vim.cmd("enew")
--- 		end
--- 	end
--- end
---
+M.create_highlight_groups(hl_groups)
 
 return M
