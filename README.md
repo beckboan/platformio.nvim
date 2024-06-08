@@ -2,24 +2,24 @@
 
 ## Lua overhaul of https://github.com/normen/vim-pio
 
+## TO DO
 
-	vim.api.nvim_buf_set_lines(bufnr, 0, -1, false, {
-		"Help: Press [Enter] on a Board line name to install",
-		"",
-	})
-	vim.api.nvim_buf_set_lines(bufnr, 4, -1, false, output)
+1. Boards
+- [ ] List
+- [x] Add
 
-	local lines = vim.api.nvim_buf_get_lines(bufnr, 0, -1, false)
+2. Packages
+- [x] Install
+- [ ] Uninstall
+- [ ] Update
 
-	for i = 1, 2 do
-		local line = lines[i]
-		if line:match("^Help:") then
-			utils.highlight_line(bufnr, i - 1, line, "^Help:", "PIOMad")
-		end
-		if line:match("%[Enter%]") then
-			utils.highlight_line(bufnr, i - 1, line, "%[Enter%]", "PIOHappy")
-		end
-		if line:match("Found %d+ packages") then
-			utils.highlight_line(bufnr, i - 1, line, "%d+", "PIOHappy")
-		end
-	end
+3. Devices
+- [ ] List
+- [ ] Monitor
+
+4. Inspect
+- [ ] Inspect Memory
+- [ ] Check Code
+- [ ] Environment
+
+# Note - also planning to add a telescope option for for the package installation, board selection, etc.

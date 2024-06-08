@@ -81,6 +81,7 @@ function M.PIOSelectBoard(args)
 		end
 	end
 
+	vim.api.nvim_set_option_value("modifiable", false, { buf = bufnr })
 	vim.api.nvim_win_set_cursor(winid, { 1, 0 })
 end
 

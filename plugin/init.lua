@@ -7,7 +7,8 @@ if vim.g.loaded_pio_nvim then
 	return
 end
 
--- Define the custom command
+vim.g.loaded_pio_nvim = true
+
 vim.api.nvim_create_user_command("PIOSelectBoard", function()
 	boards.PIOSelectBoard()
 end, { nargs = 0 })
@@ -53,5 +54,3 @@ vim.api.nvim_create_user_command("PIOInstallTool", function(opts)
 	local name = opts.fargs[1]
 	package.PIOInstallPkg(name, "tool")
 end, { nargs = 1 })
-
-vim.g.loaded_pio_nvim = true
