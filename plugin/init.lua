@@ -1,18 +1,29 @@
 local package = require("platformio.package")
 local boards = require("platformio.boards")
 
-print("Hello from platformio.nvim plugin")
-
 if vim.g.loaded_pio_nvim then
 	return
 end
 
 vim.g.loaded_pio_nvim = true
 
-vim.api.nvim_create_user_command("PIOSelectBoard", function()
-	boards.PIOSelectBoard()
-end, { nargs = 0 })
+-- Commands available in the Neovim command line
 
+-- Boards (can either select or view)
+
+-- select board (default is no name)
+vim.api.nvim_create_user_command("PIOSelectBoard", function(opts)
+	local name = opts.fargs[1]
+	boards.PIOSelectBoard(name, true)
+end, { nargs = "?" })
+
+-- view board (default is no name)
+vim.api.nvim_create_user_command("PIOViewBoards", function(opts)
+	local name = opts.fargs[1]
+	boards.PIOSelectBoard(name, false)
+end, { nargs = "?" })
+
+-- Packages
 vim.api.nvim_create_user_command("PIOSelectLib", function(opts)
 	local name = opts.fargs[1]
 	local args = {}
@@ -54,3 +65,8 @@ vim.api.nvim_create_user_command("PIOInstallTool", function(opts)
 	local name = opts.fargs[1]
 	package.PIOInstallPkg(name, "tool")
 end, { nargs = 1 })
+
+vim.api.nvim_create_user_command("PIOUninstallPkg", function(opts)
+	local name = opts.fargs[1]
+	package.PIOUninstallPkg(name)
+end, { nargs = "?" })

@@ -34,17 +34,11 @@ function M.PIOCommandList(args, L, P)
 		home = { "--port", "--host", "--no-open", "--shutdown-timeout", "--session-id", "-h" },
 		lib = { "builtin", "install", "list", "register", "search", "show", "stats", "uninstall", "update" },
 		pkg = {
-			"exec",
-			"install",
+			"install", -- done
 			"list",
 			"outdated",
-			"pack",
-			"publish",
-			"search",
 			"show",
-			"stats",
 			"uninstall",
-			"unpublish",
 			"update",
 		},
 		org = { "add", "create", "destroy", "list", "remove", "update", "-h" },
@@ -108,60 +102,72 @@ function M.PIOKeywordList()
 	}
 	return table.concat(commands, "\n")
 end
-function M.PIOGetIniKeywords()
-	local commands = {}
-	local pio_ini = io.open("platformio.ini", "r")
-	if pio_ini then
-		for line in pio_ini:lines() do
-			if string.match(line, "^platform[%s\t]*=.*") then
-				local pltf = string.gsub(line, "=", ":", "g")
-				pltf = string.gsub(pltf, "[%s\t]", "", "g")
-				table.insert(commands, pltf)
+
+-- Parse the 'pkg list' command output
+M.parse_pkg_list = function(output)
+	local environments = {}
+	local libraries = {}
+	local current_env = nil
+	local inside_libraries_section = false
+
+	if output == nil then
+		return { libraries = {}, environments = {} }
+	end
+
+	local output_string = type(output) == "table" and table.concat(output, "\n") or output
+
+	for line in output_string:gmatch("[^\r\n]+") do
+		line = vim.trim(line)
+
+		-- Detect environment sections
+		if line:match("^Resolving") then
+			-- Match the next word after 'Resolving' as the environment name
+			current_env = line:match("^Resolving ([^ ]+)")
+			if current_env then
+				environments[current_env] = {}
+				inside_libraries_section = false
 			end
-			if string.match(line, "^framework[%s\t]*=.*") then
-				local pltf = string.gsub(line, "=", ":", "g")
-				pltf = string.gsub(pltf, "[%s\t]", "", "g")
-				table.insert(commands, pltf)
+		elseif line:match("^Libraries") then
+			inside_libraries_section = true
+		elseif line:match("^└──") and inside_libraries_section then
+			local library_name = line:match("└── ([^@]+) @")
+			if library_name then
+				if not libraries[library_name] then
+					libraries[library_name] = true
+				end
+				if current_env then
+					table.insert(environments[current_env], library_name)
+				end
 			end
 		end
-		pio_ini:close()
 	end
-	return commands
+
+	local libraries = vim.tbl_keys(libraries)
+
+	return { libraries = libraries, environments = environments }
 end
 
-M.parse_command = function(output)
+-- Default parsing for other commands
+M.parse_default = function(output)
 	local data = {}
 	local current_group = {}
 	local empty_line_count = 0
 
-	if output == nil then
-		return
-	end
-
-	local output_string = ""
-	if type(output) == "string" then
-		output_string = output
-	elseif type(output) == "table" then
-		output_string = table.concat(output, "\n")
-	else
-		-- TODO: Need to log here
-	end
+	local output_string = type(output) == "table" and table.concat(output, "\n") or output
 
 	for line in output_string:gmatch("([^\r\n]*[\r\n]?)") do
-		-- print(line)
 		if line == "\n" or line == "\r\n" then
 			empty_line_count = empty_line_count + 1
 		else
 			if empty_line_count > 0 then
 				table.insert(data, current_group)
-				current_group = {} -- Reset the current group for the next set of lines
-				empty_line_count = 0 -- Reset the empty line count
+				current_group = {}
+				empty_line_count = 0
 			end
 			table.insert(current_group, line)
 		end
 	end
 
-	-- Add the last group to the data table
 	if #current_group > 0 then
 		table.insert(data, current_group)
 	end
@@ -169,19 +175,46 @@ M.parse_command = function(output)
 	return data
 end
 
+-- General command output parsing function
+M.parse_command_output = function(command, output)
+	if command == "pkg list" then
+		return M.parse_pkg_list(output)
+	else
+		-- Default parsing or error handling
+		return M.parse_default(output)
+	end
+end
+
 M.run_pio_command_async = function(command, callback)
 	local full_command = "pio " .. command
+
+	-- Echo the full command to the Neovim CLI
+	vim.api.nvim_echo({ { "Running command: " .. full_command, "Normal" } }, false, {})
 
 	vim.fn.jobstart(full_command, {
 		on_stdout = function(_, data, _)
 			if data then
 				local output = table.concat(data, "\n")
-
-				local lines = M.parse_command(output)
-				callback(lines)
+				local parsed_output = M.parse_command_output(command, output)
+				callback(parsed_output)
+			else
+				vim.api.nvim_echo({ { "No data returned from command", "ErrorMsg" } }, false, {})
+			end
+		end,
+		on_stderr = function(_, data, _)
+			if data then
+				-- vim.api.nvim_echo({ { "Command error: " .. output, "ErrorMsg" } }, false, {})
+			else
+				vim.api.nvim_echo({ { "No error data returned from command", "ErrorMsg" } }, false, {})
+			end
+		end,
+		on_exit = function(_, code, _)
+			if code ~= 0 then
+				vim.api.nvim_echo({ { "Command exited with error code: " .. code, "ErrorMsg" } }, false, {})
 			end
 		end,
 		stdout_buffered = true,
 	})
 end
+
 return M

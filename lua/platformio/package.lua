@@ -166,6 +166,70 @@ local function async_pio_pkg_search(params, callback)
 	coroutine.resume(fetch_packages)
 end
 
+-- Uses pio pkg list to get the list of installed packages and provides the user with the option to uninstall them
+-- The user can select a package to uninstall
+
+M.PIOUninstallPkg = function(name)
+	name = name or ""
+	local winid, bufnr = utils.RunPIOWin("PIO Pkg Uninstall")
+
+	if winid < 0 then
+		print("Failed to create window")
+		return
+	end
+
+	vim.api.nvim_set_option_value("winhl", "Normal:MyHighlight", { win = winid })
+	vim.api.nvim_set_option_value("bufhidden", "wipe", { buf = bufnr })
+
+	vim.api.nvim_buf_set_keymap(
+		bufnr,
+		"n",
+		"<CR>",
+		[[:lua require("platformio.package").PIOUninstallPkg(vim.fn.getline("."))<CR>]],
+		{ noremap = true, silent = true }
+	)
+
+	vim.api.nvim_echo({ { "Fetching installed packages ...", "Normal" } }, false, {})
+
+	local command = "pkg list"
+	commands.run_pio_command_async(command, function(parsed_data)
+		local libraries = parsed_data.libraries
+		local environments = parsed_data.environments
+
+		-- Extract and sort all libraries
+		local all_libraries = {}
+		for lib in pairs(libraries) do
+			table.insert(all_libraries, lib)
+		end
+		table.sort(all_libraries)
+
+		-- Create the lines to display
+		local lines = { "All libraries:" }
+		for _, lib in ipairs(all_libraries) do
+			table.insert(lines, lib)
+		end
+
+		-- Display libraries by environment
+		for env, libs in pairs(environments) do
+			table.insert(lines, "")
+			table.insert(lines, "Environment: " .. env)
+			for _, lib in ipairs(libs) do
+				table.insert(lines, lib)
+			end
+		end
+
+		-- Ensure buffer handle is valid before setting lines
+		if not bufnr or not vim.api.nvim_buf_is_valid(bufnr) then
+			vim.api.nvim_echo({ { "Invalid buffer handle", "ErrorMsg" } }, false, {})
+			return
+		end
+
+		-- Show results in the buffer
+		vim.api.nvim_buf_set_lines(bufnr, 0, -1, false, lines)
+		vim.api.nvim_set_option_value("modifiable", false, { buf = bufnr })
+	end)
+end
+
 function M.PIOSelectPkg(name, packtype, args)
 	if name == "" then
 		print("Must enter a name")

@@ -27,7 +27,8 @@ function M.PIOInit(board)
 	utils.OpenTerm2(cmd)
 end
 
-function M.PIOSelectBoard(args)
+function M.PIOSelectBoard(args, select)
+	select = select or false
 	args = args or ""
 
 	local winid, bufnr = utils.RunPIOWin("PIO Boards")
@@ -43,13 +44,16 @@ function M.PIOSelectBoard(args)
 	vim.bo.buftype = "nofile"
 	vim.bo.bufhidden = "wipe"
 	vim.bo.filetype = "pioboards"
-	vim.api.nvim_buf_set_keymap(
-		bufnr,
-		"n",
-		"<CR>",
-		[[:lua require("platformio.boards").PIOInit(vim.fn.expand("<cWORD>"))<CR>]],
-		{ noremap = true, silent = true }
-	)
+
+	if select then
+		vim.api.nvim_buf_set_keymap(
+			bufnr,
+			"n",
+			"<CR>",
+			[[:lua require("platformio.boards").PIOInit(vim.fn.expand("<cWORD>"))<CR>]],
+			{ noremap = true, silent = true }
+		)
+	end
 
 	vim.api.nvim_echo({ { "Scanning Boards ...", "Normal" } }, false, {})
 
@@ -58,7 +62,7 @@ function M.PIOSelectBoard(args)
 	vim.api.nvim_set_option_value("modifiable", true, { buf = bufnr })
 
 	vim.api.nvim_buf_set_lines(bufnr, 0, -1, false, {
-		"Help: Press [Enter] on a Board line name to install",
+		"Help: Press [Enter] on a board line name to install",
 	})
 	vim.api.nvim_buf_set_lines(bufnr, 3, -1, false, output)
 
